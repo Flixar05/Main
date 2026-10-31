@@ -1,0 +1,88 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'ru.celestial'
+version = 'Beta-1.16.5'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-nowarn', '-Xlint:none', '-Xmaxerrs', '10000']
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+application {
+    mainClass = 'offline.launcher.OfflineLauncher'
+}
+
+def configureClientExec(JavaExec task) {
+    def targetGameDir = file('run')
+    if (!targetGameDir.exists()) targetGameDir.mkdirs()
+    def defaultMcAssets = file("${System.getProperty('user.home')}/AppData/Roaming/.minecraft/assets")
+    def targetAssetsDir = file('run/assets').exists() ? file('run/assets') : (defaultMcAssets.exists() ? defaultMcAssets : file('run/assets'))
+
+    task.javaLauncher = javaToolchains.launcherFor(java.toolchain)
+    task.classpath = sourceSets.main.runtimeClasspath
+    task.mainClass = 'offline.launcher.OfflineLauncher'
+    task.workingDir = targetGameDir
+    
+    task.jvmArgs = [
+        "-Xms512m",
+        "-Xmx4g",
+        "-Djava.library.path=${file('natives').absolutePath}",
+        "-Dorg.lwjgl.librarypath=${file('natives').absolutePath}",
+        "-Djna.tmpdir=${file('natives').absolutePath}",
+        "-Dsun.net.client.defaultConnectTimeout=1500",
+        "-Dsun.net.client.defaultReadTimeout=1500",
+        "-Dlog4j2.formatMsgNoLookups=true",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+        "--add-opens=java.base/java.net=ALL-UNNAMED",
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+        "--add-opens=jdk.unsupported/sun.misc=ALL-UNNAMED",
+        "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
+    ]
+    
+    task.args = [
+        '--username', 'Player',
+        '--version', 'Beta 1.16.5',
+        '--gameDir', targetGameDir.absolutePath,
+        '--assetsDir', targetAssetsDir.absolutePath,
+        '--assetIndex', '1.16',
+        '--uuid', 'bd346dd5-ac1c-427d-87e8-73bdd4bf3e13',
+        '--accessToken', '0',
+        '--userType', 'legacy',
+        '--versionType', 'release',
+        '--userProperties', '{}',
+        '--width', '1280',
+        '--height', '720'
+    ]
+}
+
+tasks.named('run', JavaExec) {
+    group = 'execution'
+    description = 'Runs the Celestial Client'
+    configureClientExec(it)
+}
+
+tasks.register('runClient', JavaExec) {
+    group = 'execution'
+    description = 'Runs the Celestial Client'
+    configureClientExec(it)
+}
